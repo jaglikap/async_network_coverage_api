@@ -1,0 +1,10 @@
+fastapi[all]
+uvicorn[standard]
+requests
+pytest
+mock==4.0.3
+pandas==2.2.0
+pyproj
+scipy
+dask[delayed]
+dask[dataframe]
