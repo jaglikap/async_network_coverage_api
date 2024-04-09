@@ -1,0 +1,8 @@
+# You need to declare these environmental variables either in the configuration of PyCHarm either in .env file either here below by replacing the path_to with your local path where the network_coverage_api is stored
+
+# this is the name of the csv file where are stored the location gps coordinates for each network tower in France
+ntw_towers_gps_coordinates: {{ env.get("NTW_TOWERS_GPS_COORDINATES", "path_to/network_coverage_api/public/2018_01_Sites_mobiles_2G_3G_4G_France_metropolitaine_GPS.csv") }}
+ntw_towers_l93_coordinates: {{ env.get("NTW_TOWERS_L93_COORDINATES", "path_to/network_coverage_api/public/2018_01_Sites_mobiles_2G_3G_4G_France_metropolitaine_L93_ver2.csv") }}
+# this is the cache file where will be serialized the DataFrame object of the extra large csv file where are stored the
+# location gps information for every network tower in France
+cache_file: {{ env.get("CACHE_FILE", "path_to/network_coverage_api/public/tower_locations.pkl") }}

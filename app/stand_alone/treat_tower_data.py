@@ -1,10 +1,10 @@
-import argparse
+import os
 from pathlib import Path
 
 import pyproj
 import pandas as pd
 from dask import dataframe as dd
-from app.utils.constants import ROOT_PATH, NTW_TOWERS_L93_COORDINATES
+from app.utils.settings import get_config_dict
 
 
 def lambert93_to_gps_vectorized(df):
@@ -18,15 +18,14 @@ def lambert93_to_gps_vectorized(df):
     df['x_gps'], df['y_gps'] = pyproj.transform(lambert, wgs84, df['x'].values, df['y'].values)
     return df
 
-def convert_l93_into_gps(dest_file: Path):
+def convert_l93_into_gps(**kwargs):
     """
     Convert the lambert93 format of coordinates into GPS.
     It uses pandas and dask libraries in order to speed up the calculation of mathematical transformations and
     generation of new csv file
-    :param dest_file:
     """
-    path_to_origin_csv = ROOT_PATH.joinpath("public").joinpath(NTW_TOWERS_L93_COORDINATES)
-    path_to_destination_csv = ROOT_PATH.joinpath("public").joinpath(dest_file)
+    path_to_origin_csv = kwargs["source_file"]
+    path_to_destination_csv = Path(kwargs["dest_file"])
     # Load the CSV file into Dask DataFrame
     df = dd.read_csv(path_to_origin_csv)
 
@@ -40,14 +39,14 @@ def convert_l93_into_gps(dest_file: Path):
     df = df.compute()
 
     # Save the result into new CSV file
+    if path_to_destination_csv.exists():
+        os.remove(path_to_destination_csv)
     df.to_csv(path_to_destination_csv, index=False)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--destfilename", type=str, help="The name of the csv file where the conversion will be generated"
+    config_vars = get_config_dict()
+    convert_l93_into_gps(
+        source_file=config_vars["ntw_towers_l93_coordinates"],
+        dest_file=config_vars["ntw_towers_gps_coordinates"]
     )
-    args = parser.parse_args()
-
-    convert_l93_into_gps(args.destfilename)

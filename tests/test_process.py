@@ -1,12 +1,13 @@
 import io
 import os
 from collections import defaultdict
+from os.path import dirname, abspath
+from pathlib import Path
 
 import pandas as pd
 import pytest
 
 from app.http_client.APIAdresse import APIAdresse
-from app.utils.constants import ROOT_PATH
 from app.utils.process import calculate_network_coverages
 
 
@@ -15,7 +16,8 @@ def address_api():
     return APIAdresse()
 
 
-test_location_data = ROOT_PATH.joinpath("tests").joinpath("data").joinpath("pickled_data.pkl")
+ROOT_PATH = Path(dirname(dirname(abspath(__file__))))
+test_location_data = str(ROOT_PATH.joinpath("tests").joinpath("data").joinpath("pickled_data.pkl"))
 
 file_data_csv = """Operateur,x,y,2G,3G,4G,x_gps,y_gps
 Orange,643536,6859045,0,0,0,2.2308558301658454,48.82898791309985

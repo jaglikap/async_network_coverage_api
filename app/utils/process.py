@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 from scipy.spatial import KDTree
-from ..http_client.APIAdresse import APIAdresse
+from app.http_client.APIAdresse import APIAdresse
 
 api_adresse = APIAdresse()
 
@@ -31,7 +31,7 @@ def find_nearest_neighbor(df_group: pd.DataFrame, lat: float, lon: float, nb_nea
     return df_group.iloc[nearest_idx]
 
 
-def calculate_network_coverages(addresses: dict, cache_data_path: Path) -> dict:
+def calculate_network_coverages(addresses: dict, cache_data_path: str) -> dict:
     """
     Calculates the 3 nearest network towers for each network operator proposing the network coverage for
         each given location coordinates of address.
