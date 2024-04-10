@@ -1,19 +1,18 @@
 import io
 import os
 from collections import defaultdict
+from pathlib import Path
 
 import pandas as pd
 import pytest
 
 from app.http_client.APIAdresse import APIAdresse
 from app.utils.constants import ROOT_PATH
-from app.utils.process import calculate_network_coverages
+from app.utils.process import Process
 
 
-@pytest.fixture()
-def address_api():
-    return APIAdresse()
-
+def init_process():
+    return Process(cache_path=Path("tests").joinpath("data").joinpath("pickled_data.pkl"))
 
 test_location_data = ROOT_PATH.joinpath("tests").joinpath("data").joinpath("pickled_data.pkl")
 
@@ -62,12 +61,20 @@ data_test_addresses = ['159 Boulevard Macdonald 75019 Paris', '10 Rue Chana Orlo
                        '109p5 109P5 Rue de la Haie Coq 75019 Paris', '25p1 25P1 Quai du Lot 75019 Paris',
                        '109p6 109P6 Rue de la Haie Coq 75019 Paris', '37 Rue de la Gare 75019 Paris']
 
+data_all_address_coordinates = [{'x': 2.378185, 'y': 48.898595}]
+
+
 def mock_get_all_coordinates_address(self, **kwargs):
     for data in data_test_addresses:
         yield data
 
+
+def mock_all_address_coordinates(self, **kwargs):
+    for data in data_all_address_coordinates:
+        yield data
+
 @pytest.mark.parametrize(
-    "input_data_add, data_csv, expected",
+    "payload, data_csv, expected",
     [
         pytest.param(
             {},
@@ -76,7 +83,7 @@ def mock_get_all_coordinates_address(self, **kwargs):
             {}
         ),
         pytest.param(
-            {'id1': {'x': 2.378185, 'y': 48.898595}},
+            {"id1": "157 boulevard Mac Donald 75019 Paris"},
             file_data_csv,
             {'id1': defaultdict(list,
                                 {'Bouygues': [{'2G': 'false', '3G': 'true', '4G': 'true',
@@ -108,10 +115,12 @@ def mock_get_all_coordinates_address(self, **kwargs):
         )
     ]
 )
-def test_calculate_network_coverages(monkeypatch, input_data_add, data_csv, expected):
+def test_calculate_network_coverages(monkeypatch, payload, data_csv, expected):
+    process = init_process()
     tower_locations = pd.read_csv(io.StringIO(data_csv))
-    tower_locations.to_pickle(test_location_data)
+    tower_locations.to_pickle(process.cache_path)
     monkeypatch.setattr(APIAdresse, "get_all_coordinates_address", mock_get_all_coordinates_address)
-    result = calculate_network_coverages(input_data_add, test_location_data)
-    os.remove(test_location_data)
+    monkeypatch.setattr(APIAdresse, "get_all_address_coordinates", mock_all_address_coordinates)
+    result = process.calculate_network_coverages(payload, 3)
+    os.remove(process.cache_path)
     assert result == expected

@@ -164,3 +164,4 @@ cython_debug/
 public/*.pkl
 app/__pycache__
 app/*/__pycache__
+.run

@@ -1,12 +1,7 @@
-import pandas as pd
 from fastapi import FastAPI
+from .utils.process import Process
 
-from .http_client.APIAdresse import APIAdresse
-from .utils.process import calculate_network_coverages
-from .utils.constants import ROOT_PATH, NTW_TOWERS_GPS_COORDINATES, CACHE_DF_FILE
-
-data_path = ROOT_PATH.joinpath("public")
-api_adresse = APIAdresse()
+process = Process()
 app = FastAPI()
 
 
@@ -20,13 +15,7 @@ def set_up_cache():
         of the x,y coordinates.
 
     """
-    cache_data = data_path.joinpath(CACHE_DF_FILE)
-    if not cache_data.exists():
-        # pandas library is used in order to speed up the processing of extra large amount of data
-        tower_locations = pd.read_csv(data_path.joinpath(NTW_TOWERS_GPS_COORDINATES))
-        # serialize the DataFrame object
-        tower_locations.to_pickle(cache_data)
-
+    process.initialize_cache_data()
 
 
 @app.post("/search")
@@ -41,13 +30,8 @@ async def retrieve_network_coverages(payload: dict) -> dict:
     :return: dictionary of the nearest network operators and their coverage for the given addresses
     :rtype: dict
     """
-    # get the gps coordinates for the given addresses through the API Adresse
-    addresses = {
-        address_id: api_adresse.get_address_coordinates(query=address)
-        for address_id, address in payload.items()
-    }
     # calculate the network coverages, by passing as arguments the retrieved gps coordinates as well as
     # the cache file holding the network towers' gps coordinates
-    result = calculate_network_coverages(addresses, data_path.joinpath(CACHE_DF_FILE))
+    result = process.calculate_network_coverages(payload=payload, nb_nearest_neighbours=3)
 
     return result
