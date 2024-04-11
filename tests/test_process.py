@@ -1,19 +1,19 @@
 import io
 import os
 from collections import defaultdict
+from pathlib import Path
 
 import pandas as pd
 import pytest
+from unittest.mock import AsyncMock
 
-from app.http_client.APIAdresse import APIAdresse
+from app.async_client.APIAdresse import APIAdresse
 from app.utils.constants import ROOT_PATH
-from app.utils.process import calculate_network_coverages
+from app.utils.process import Process
 
 
-@pytest.fixture()
-def address_api():
-    return APIAdresse()
-
+def init_process():
+    return Process(cache_path=Path("tests").joinpath("data").joinpath("pickled_data.pkl"))
 
 test_location_data = ROOT_PATH.joinpath("tests").joinpath("data").joinpath("pickled_data.pkl")
 
@@ -55,29 +55,28 @@ Free,654892,6866646,0,1,1,2.3847317698096275,48.89823751917798
 Orange,654406,6866641,0,0,0,2.378103592272793,48.89815831832524
 """
 
-data_test_addresses = ['159 Boulevard Macdonald 75019 Paris', '10 Rue Chana Orloff 75019 Paris',
-                       '63 Rue Emile Bollaert 75019 Paris', '159b Avenue de Flandre 75019 Paris',
-                       '101 Boulevard Macdonald 75019 Paris', '87 Avenue Victor Hugo 93300 Aubervilliers',
-                       '24 Rue Césaria Évora 75019 Paris', '19 Rue Emile Bollaert 75019 Paris',
-                       '109p5 109P5 Rue de la Haie Coq 75019 Paris', '25p1 25P1 Quai du Lot 75019 Paris',
-                       '109p6 109P6 Rue de la Haie Coq 75019 Paris', '37 Rue de la Gare 75019 Paris']
-
-def mock_get_all_coordinates_address(self, **kwargs):
-    for data in data_test_addresses:
-        yield data
 
 @pytest.mark.parametrize(
-    "input_data_add, data_csv, expected",
+    "payload, data_csv, addr_to_coordinates, coordinates_to_addr, expected",
     [
         pytest.param(
             {},
             """Operateur,x,y,2G,3G,4G,x_gps,y_gps
             """,
+            {},
+            [],
             {}
         ),
         pytest.param(
-            {'id1': {'x': 2.378185, 'y': 48.898595}},
+            {"id1": "157 boulevard Mac Donald 75019 Paris"},
             file_data_csv,
+            {'x': 2.378185, 'y': 48.898595},
+            ['159 Boulevard Macdonald 75019 Paris', '10 Rue Chana Orloff 75019 Paris',
+             '63 Rue Emile Bollaert 75019 Paris', '159b Avenue de Flandre 75019 Paris',
+             '101 Boulevard Macdonald 75019 Paris', '87 Avenue Victor Hugo 93300 Aubervilliers',
+             '24 Rue Césaria Évora 75019 Paris', '19 Rue Emile Bollaert 75019 Paris',
+             '109p5 109P5 Rue de la Haie Coq 75019 Paris', '25p1 25P1 Quai du Lot 75019 Paris',
+             '109p6 109P6 Rue de la Haie Coq 75019 Paris', '37 Rue de la Gare 75019 Paris'],
             {'id1': defaultdict(list,
                                 {'Bouygues': [{'2G': 'false', '3G': 'true', '4G': 'true',
                                                'address': '159 Boulevard Macdonald 75019 Paris'},
@@ -108,10 +107,13 @@ def mock_get_all_coordinates_address(self, **kwargs):
         )
     ]
 )
-def test_calculate_network_coverages(monkeypatch, input_data_add, data_csv, expected):
+@pytest.mark.asyncio
+async def test_calculate_network_coverages(monkeypatch, payload, data_csv, addr_to_coordinates, coordinates_to_addr, expected):
+    process = init_process()
     tower_locations = pd.read_csv(io.StringIO(data_csv))
-    tower_locations.to_pickle(test_location_data)
-    monkeypatch.setattr(APIAdresse, "get_all_coordinates_address", mock_get_all_coordinates_address)
-    result = calculate_network_coverages(input_data_add, test_location_data)
-    os.remove(test_location_data)
+    tower_locations.to_pickle(process.cache_path)
+    monkeypatch.setattr(APIAdresse, "get_address_coordinates", AsyncMock(return_value=addr_to_coordinates))
+    monkeypatch.setattr(APIAdresse, "get_coordinates_address", AsyncMock(side_effect=coordinates_to_addr))
+    result = await process.calculate_network_coverages(payload, 3)
+    os.remove(process.cache_path)
     assert result == expected

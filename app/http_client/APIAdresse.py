@@ -37,6 +37,7 @@ class APIAdresse:
             self.logger.error(f"Error code: {response.status_code}, {content_dict}")
             return {}
 
+    @lru_cache(maxsize=None)
     def get_address_coordinates(self, query: str) -> dict:
         """
         Retrieve the gps coordinates x, y of an address
@@ -66,7 +67,16 @@ class APIAdresse:
             return features[0].get("properties", {}).get("label", "Address not found")
         return "Address not found"
 
-    def get_all_coordinates_address(self, **kwargs) -> Generator:
+    def get_all_address_coordinates(self, **kwargs) -> Generator[dict, None, None]:
+        """
+        Generate the gps coordinates x, y upon given addresses
+        :return: Generator of dictionary of addresses
+        :rtype: Generator
+        """
+        for _, query in kwargs["data"].items():
+            yield self.get_address_coordinates(query=query)
+
+    def get_all_coordinates_address(self, **kwargs) -> Generator[str, None, None]:
         """
         Generate the addresses upon given gps coordinates x, y
         :return: Generator of string of addresses
