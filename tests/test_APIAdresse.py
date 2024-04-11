@@ -1,6 +1,6 @@
 import pytest
-from mock import MagicMock
-from app.http_client.APIAdresse import APIAdresse
+from app.async_client.APIAdresse import APIAdresse
+from unittest.mock import AsyncMock
 
 @pytest.fixture()
 def address_api():
@@ -46,17 +46,16 @@ expected_result = {'x': 2.378185, 'y': 48.898595}
 @pytest.mark.parametrize(
     "query, mock_response, expected",
     [
-        pytest.param({}, {}, {}),
+        pytest.param("", {}, {}),
         pytest.param(
-            {
-                "id1": "157 boulevard Mac Donald 75019 Paris",
-            },
+            "157 boulevard Mac Donald 75019 Paris",
             api_adresse_response,
             expected_result
         )
     ]
 )
-def test_get_address_coordinates(monkeypatch, address_api, query, mock_response, expected):
-    monkeypatch.setattr(APIAdresse, "send_request", MagicMock(return_value=mock_response))
-    result = address_api.get_address_coordinates(query)
+@pytest.mark.asyncio
+async def test_get_address_coordinates(monkeypatch, address_api, query, mock_response, expected):
+    monkeypatch.setattr(APIAdresse, "send_request", AsyncMock(return_value=mock_response))
+    result = await address_api.get_address_coordinates(query)
     assert result == expected

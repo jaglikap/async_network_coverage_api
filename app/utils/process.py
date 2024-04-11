@@ -1,3 +1,4 @@
+import asyncio
 from collections import defaultdict
 from os.path import dirname, abspath
 from pathlib import Path
@@ -6,20 +7,20 @@ import pandas as pd
 from scipy.spatial import KDTree
 
 from .constants import CACHE_DF_FILE, NTW_TOWERS_GPS_COORDINATES
-from ..http_client.APIAdresse import APIAdresse
+from ..async_client.APIAdresse import APIAdresse as AsyncAdresse
 
 
 class Process:
 
     def __init__(self, cache_path: Path = None):
 
-        self.api_adresse = APIAdresse()
+        self.api_adresse = AsyncAdresse()
         self.rooth_path = Path(dirname(dirname(dirname(abspath(__file__)))))
         self.data_path = self.rooth_path.joinpath("public")
         # the cache data where are stored the location coordinates of network towers in France
         self.cache_path = self.data_path.joinpath(CACHE_DF_FILE) if not cache_path else self.rooth_path.joinpath(cache_path)
 
-    def initialize_cache_data(self):
+    async def initialize_cache_data(self):
         """
         This method pickles the DataFrame object which contain the location information of french network towers.
         The data from the file is necessary (GPS coordinates of the network towers) for the network coverage.
@@ -53,18 +54,11 @@ class Process:
 
         # Query the tree for 2-dimension, and get the 3 first nearest index of the network operator
         # information
-
-        # tree.query([lat, lon], k=nb_nearest_neighbours)[0] => returns the distances of the nearest 3 neighbours
-        # tree.query([lat, lon], k=nb_nearest_neighbours)[1] => returns the indexes of the nearest 3 neighbours
-        # if k=1, then tree.query returns a simple tuple (d, i) where d is the distance and i is the index
-        # if k>1, then tree.query returns a nested tuple of lists (ndarray):
-        #   ([k length of float64 elements: d1, d2, d3, ...], [k length of float64 elements: i1, i2, i3, ...]) where d1 < d2 < d3
         nearest_idx = tree.query([lat, lon], k=nb_nearest_neighbours)[1]
-        # df_group.iloc[0] => returns a Series, whiles df_group.iloc[[8573 8581 8529]] returns a DataFrame
         return df_group.iloc[nearest_idx] if nb_nearest_neighbours > 1 else df_group.iloc[[nearest_idx]]
 
 
-    def calculate_network_coverages(
+    async def calculate_network_coverages(
             self,
             payload: dict,
             nb_nearest_neighbours: int
@@ -78,8 +72,7 @@ class Process:
         """
         # initialize the result
         result = {add_id: defaultdict(list) for add_id in payload.keys()}
-
-        addresses = self.api_adresse.get_all_address_coordinates(data=payload)
+        addresses = await asyncio.gather(*(self.api_adresse.get_address_coordinates(query=value) for value in payload.values()))
 
         # load the pickled DataFrame object where are stored the location coordinates of network towers in France
         df = pd.read_pickle(self.cache_path)
@@ -97,8 +90,12 @@ class Process:
                 lambda x: str(bool(x)).lower()
             )
             # get the corresponding addresses from the network operators' gps coordinates
-            data_api_adresses = self.api_adresse.get_all_coordinates_address(
-                data=list(zip(nearest_per_operator["x_gps"].to_numpy(), nearest_per_operator["y_gps"].to_numpy()))
+            data_api_adresses = await asyncio.gather(
+                *(self.api_adresse.get_coordinates_address(lon=x, lat=y)
+                for x, y in zip(
+                    nearest_per_operator["x_gps"].to_numpy(),
+                    nearest_per_operator["y_gps"].to_numpy()
+                ))
             )
             # treat the data so that there are for each given address and network operator the 3 nearest network towers
             # offering the network coverage within their addresses
@@ -108,8 +105,6 @@ class Process:
                 data["address"] = address
                 # operator is a tuple of (str: name of operator; int: index in the DataFrame)
                 # data is Series
-                # example of data.to_dict():
-                #   {'2G': 'false', '3G': 'true', '4G': 'true', 'address': '159b Avenue de Flandre 75019 Paris'}
                 result[add_id][operator[0]].append(data.to_dict())
 
         return result

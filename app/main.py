@@ -6,7 +6,7 @@ app = FastAPI()
 
 
 @app.on_event("startup")
-def set_up_cache():
+async def set_up_cache():
     """
     Set up a cache data on startup event of the server.
     This function pickles the DataFrame object which contain the location information of french network towers.
@@ -15,7 +15,7 @@ def set_up_cache():
         of the x,y coordinates.
 
     """
-    process.initialize_cache_data()
+    await process.initialize_cache_data()
 
 
 @app.post("/search")
@@ -32,6 +32,6 @@ async def retrieve_network_coverages(payload: dict) -> dict:
     """
     # calculate the network coverages, by passing as arguments the retrieved gps coordinates as well as
     # the cache file holding the network towers' gps coordinates
-    result = process.calculate_network_coverages(payload=payload, nb_nearest_neighbours=3)
+    result = await process.calculate_network_coverages(payload=payload, nb_nearest_neighbours=3)
 
     return result
