@@ -1,4 +1,4 @@
-## Network Operators Coverage 
+## Asynchronous Network Operators Coverage API
 This API serves to retrieve the nearest network towers withing their network coverage for given postal addresses in France.
 
 ### Technical information
