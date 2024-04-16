@@ -1,0 +1,15 @@
+.git
+.gitignore
+.dockerignore
+.hypothesis
+.storage
+.venv
+.aws
+.vscode
+.reports
+Dockerfile*
+docker-compose*
+logstash
+docker
+*.cfg
+README.md

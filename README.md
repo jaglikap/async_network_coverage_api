@@ -14,6 +14,10 @@ This API serves to retrieve the nearest network towers withing their network cov
 - ```
   uvicorn app.main:app --reload --port 8080
   ```
+- Docker
+- ```
+  docker run -p 8081:8081 ntw_coverage`
+  ```
 ### Getting familiar with mobile network coverage
 - I did some research in order to understand how the basic mobile network coverage works.
 ### Explanation of the implementation of the solution
